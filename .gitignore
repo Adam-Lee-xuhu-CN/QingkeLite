@@ -1,0 +1,35 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+*.spec.bak
+
+# 运行时数据
+CLI_lite/data/sessions/*
+CLI_lite/data/logs/*
+CLI_lite/data/output/*
+CLI_lite/data/uploads/*
+CLI_lite/data/preferences/preference_history/*
+CLI_lite/data/preferences/current_prefs.json
+CLI_lite/dag/dags/*
+CLI_lite/config/backup/*
+CLI_lite/config/settings.yaml
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# OS
+Thumbs.db
+.DS_Store
+
+# 安装包（体积过大，不上传GitHub）
+CLI_lite/installers/
+
+# 打包产物
+*.zip
+*.exe
