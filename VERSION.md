@@ -1,61 +1,63 @@
-# 青稞·lite 版本说明
+# Qingke · Lite Version History / 青稞·lite 版本说明
 
-> **说明**：青稞lite（桌面版 PyQt5）和 CLI_lite（Web版 Flask）共享同一套核心引擎代码，仅TUI交互方式不同。
-> - **CLI_lite**：Flask Web服务 + 浏览器访问 `http://localhost:5000`
-> - **青稞lite**：PyQt5 + QWebEngineView 内嵌Web界面，打包为独立exe
-> 两者的核心逻辑（`CLI_lite/core/`、`CLI_lite/web/`）完全一致，版本号同步更新。
+> **English** | [中文](#中文版本历史)
 
-## 当前版本
+> **Note**: Qingke Lite (Desktop PyQt5) and CLI_lite (Web Flask) share the same core engine code, only the TUI interaction method differs.
+> - **CLI_lite**: Flask Web service + browser access at `http://localhost:5000`
+> - **Qingke Lite**: PyQt5 + QWebEngineView embedded web interface, packaged as standalone exe
+> Both share identical core logic (`CLI_lite/core/`, `CLI_lite/web/`), with synchronized version numbers.
+
+## Current Version
 
 **v1.9.7** (2026-07-15)
 
 ---
 
-## 版本历史
+## Version History
 
 ### v1.9.7 (2026-07-15)
 
-**DAG节点质量评估与错误处理（重大优化）:**
-- **质量评估路由机制**：错误不再直接触发重规划，而是先经过质量评估决策（retry/replan/skip）
-- **新增 `_evaluate_error_action` 方法**：评估节点错误类型并决定最佳处理方式
-  - 超时类错误且重试<2次：自动重试
-  - 重试次数已达上限：强制重规划
-  - LLM评估三种操作：retry（重试）、replan（重规划）、skip（跳过）
-- **节点自审增强**：`_evaluate_node` 返回格式新增 `action` 字段
+**DAG Node Quality Assessment & Error Handling (Major Optimization):**
+- **Quality Assessment Routing**: Errors no longer trigger replanning directly; instead, they go through quality assessment decision (retry/replan/skip)
+- **New `_evaluate_error_action` Method**: Evaluates node error types and determines optimal handling
+  - Timeout errors with retry < 2: automatic retry
+  - Retry count limit reached: forced replanning
+  - LLM evaluates three operations: retry, replan, skip
+- **Enhanced Node Self-Review**: `_evaluate_node` return format adds `action` field
   - pass=True → action="continue"
-  - pass=False → 根据评估结果选择 retry/replan/skip
-- **错误泄露防护**：所有错误上下文消息添加"[系统内部-错误已自动处理]"前缀
-  - 系统prompt新增规则11：禁止LLM向用户报告内部错误处理信息
-  - 错误消息明确标注"此信息仅供内部决策，不要向用户报告此错误"
-- **非run_command工具超时保护**：默认120秒超时，防止工具挂起导致DAG永远等待
-- **深度代码自检修复**（反向思考发现的问题）：
-  - 节点失败时直接重规划 → 路由到质量评估
-  - 回复处理异常时直接重规划 → 路由到质量评估
-  - 并行组执行失败时直接重规划 → 路由到质量评估
-  - 卡点检测直接重规划 → 路由到质量评估
-  - 中间回复消息泄露 → 添加"不要向用户报告"指令
-- **节点重试计数器**：`_node_retry_counts` 跟踪每个节点的重试次数
-- 涉及文件：`agentic_loop.py`
+  - pass=False → choose retry/replan/skip based on evaluation
+- **Error Leakage Prevention**: All error context messages prefixed with "[System Internal - Error Auto-Handled]"
+  - System prompt adds Rule 11: prohibit LLM from reporting internal error handling to users
+  - Error messages explicitly marked "for internal decision only, do not report to user"
+- **Non-run_command Tool Timeout Protection**: Default 120s timeout prevents tools from hanging DAG
+- **Deep Code Self-Inspection Fixes** (issues found via reverse thinking):
+  - Node failure direct replan → route to quality assessment
+  - Reply processing exception direct replan → route to quality assessment
+  - Parallel group execution failure direct replan → route to quality assessment
+  - Stuck detection direct replan → route to quality assessment
+  - Intermediate reply message leakage → add "do not report to user" instruction
+- **Node Retry Counter**: `_node_retry_counts` tracks retry count per node
+- Files: `agentic_loop.py`
 
 ### v1.9.6 (2026-07-15)
 
-**DAG节点错误捕获与自动重规划（重大新增）:**
-- **全链路异常捕获**：在DAG执行的5个关键环节增加try-except错误捕获
-  - `_parse_response`：LLM响应解析异常捕获（JSON解析失败、格式错误等）
-  - `_execute_tool_with_stuck_detection`：工具执行全局异常捕获（工具内部崩溃、超时等）
-  - `_execute_parallel_batch`：并行批处理异常捕获（任一并行节点失败时整体触发重规划）
-  - `answer`类型回复处理：answer生成异常捕获（内容生成失败等）
-  - 结果处理区段：结果提取、过滤、输出、自审等逻辑的异常捕获
-- **节点失败标记**：捕获异常后yield `dag_node_complete` with `status: "failed"`，前端实时显示失败状态
-- **自动重规划机制**：
-  - 节点失败后自动调用 `_try_replan()` 生成新的执行计划
-  - 错误信息通过messages列表注入LLM上下文，帮助后续决策
-  - 连续失败跟踪（`_consecutive_failures`），同一工具连续失败超阈值时注入警告
-- **重规划总次数上限**：
-  - 最多重规划10次（`_max_total_replan_failures=10`），防止无限重规划循环
-  - 达到上限后yield失败节点事件，任务干净退出
-- **并行组错误处理**：并行批处理中任一节点失败时，整体标记失败并触发重规划
-- 涉及文件：`agentic_loop.py`
+**DAG Node Error Capture & Auto-Replanning (Major New):**
+- **Full-chain Exception Capture**: Added try-except error capture in 5 key DAG execution stages
+  - `_parse_response`: LLM response parsing exception capture (JSON parsing failure, format errors, etc.)
+  - `_execute_tool_with_stuck_detection`: Tool execution global exception capture (tool internal crash, timeout, etc.)
+  - `_execute_parallel_batch`: Parallel batch exception capture (any parallel node failure triggers overall replanning)
+  - `answer` type reply handling: answer generation exception capture
+  - Result processing section: result extraction, filtering, output, self-review logic exception capture
+- **Node Failure Marking**: After capturing exception, yield `dag_node_complete` with `status: "failed"` for real-time frontend display
+- **Auto-Replanning Mechanism**:
+  - Auto-call `_try_replan()` to generate new execution plan after node failure
+  - Error info injected into LLM context via messages list to assist subsequent decisions
+  - Consecutive failure tracking (`_consecutive_failures`), inject warning when same tool fails consecutively above threshold
+- **Total Replanning Limit**:
+  - Maximum 10 replans (`_max_total_replan_failures=10`), prevent infinite replanning loop
+  - After reaching limit, yield failed node event and task exits cleanly
+- **Parallel Group Error Handling**: When any node in parallel batch fails, mark entire group as failed and trigger replanning
+- Files: `agentic_loop.py`
 
 ### v1.9.5 (2026-07-14)
 
