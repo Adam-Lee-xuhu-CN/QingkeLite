@@ -266,9 +266,9 @@ class LLMGateway:
         # 合并所有system消息（原始system prompt + DAG执行状态等）
         system_prompt = "\n\n".join(system_parts) if system_parts else ""
 
-        # 截断历史：保留最近N轮对话，每条消息最多500字符，防止query过长导致Dify截断system prompt
-        MAX_HISTORY_TURNS = 8
-        MAX_MSG_LEN = 500
+        # 截断历史：保留最近N轮对话，每条消息最多2000字符，防止query过长导致Dify截断system prompt
+        MAX_HISTORY_TURNS = 10
+        MAX_MSG_LEN = 2000
         recent = non_system[-MAX_HISTORY_TURNS * 2:] if len(non_system) > MAX_HISTORY_TURNS * 2 else non_system
 
         # 构建query：system prompt始终在最前面

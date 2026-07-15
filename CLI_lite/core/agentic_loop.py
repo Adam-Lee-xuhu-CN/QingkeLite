@@ -406,10 +406,9 @@ class AgenticLoop:
                             reason = eval_result.get("reason", "")
                             suggestion = eval_result.get("suggestion", "")
                             
-                            yield {
-                                "type": "dag_node_output", "index": dag_node_index,
-                                "output": f"[质量评估] 并行组失败, 操作: {action}, 原因: {reason}"
-                            }
+                            # 质量评估结果记录到日志，不输出到前端（防止泄露）
+                            _log_llm_dialogue(self._log_dir, "系统",
+                                f"质量评估 并行组失败: 操作={action}, 原因={reason}", "质量评估")
                             
                             if action == "retry":
                                 # 重试：增加计数，注入反馈消息
@@ -439,7 +438,11 @@ class AgenticLoop:
                                 replan_result = self._try_replan(
                                     user_input, messages, completed_nodes,
                                     dag_node_index,
-                                    f"并行组 [{fail_summary}] 执行失败",
+                                    f"并行组 [{fail_summary}] 执行失败。\n"
+                                    f"重要提示：在重新规划时请考虑：\n"
+                                    f"1. 是否有其他不依赖失败节点的任务可以并行执行？\n"
+                                    f"2. 标记可并行的步骤为同一 parallel_group（如 'A'、'B'）\n"
+                                    f"3. 避免再次使用可能失败的工具或命令",
                                     plan_version
                                 )
                                 if replan_result:
@@ -450,7 +453,7 @@ class AgenticLoop:
                                         "steps": new_steps,
                                         "planned_at": _now_str(),
                                         "plan_version": plan_version,
-                                        "reason": f"并行组节点失败，正在重新规划...",
+                                        "reason": f"并行组节点失败，正在重新规划（含并行任务）...",
                                         "reflection": replan_reflection,
                                     }
                     except Exception as pg_err:
@@ -479,10 +482,9 @@ class AgenticLoop:
                         reason = eval_result.get("reason", "")
                         suggestion = eval_result.get("suggestion", "")
                         
-                        yield {
-                            "type": "dag_node_output", "index": dag_node_index,
-                            "output": f"[质量评估] 并行组异常, 操作: {action}, 原因: {reason}"
-                        }
+                        # 质量评估结果记录到日志，不输出到前端（防止泄露）
+                        _log_llm_dialogue(self._log_dir, "系统",
+                            f"质量评估 并行组异常: 操作={action}, 原因={reason}", "质量评估")
                         
                         if action == "retry":
                             # 重试：增加计数，注入反馈消息
@@ -511,7 +513,13 @@ class AgenticLoop:
                             self._node_retry_counts["并行组异常"] = 0
                             replan_result = self._try_replan(
                                 user_input, messages, completed_nodes,
-                                dag_node_index, error_msg, plan_version
+                                dag_node_index,
+                                f"{error_msg}\n"
+                                f"重要提示：在重新规划时请考虑：\n"
+                                f"1. 是否有其他不依赖失败节点的任务可以并行执行？\n"
+                                f"2. 标记可并行的步骤为同一 parallel_group（如 'A'、'B'）\n"
+                                f"3. 避免再次使用可能导致问题的工具或命令",
+                                plan_version
                             )
                             if replan_result:
                                 plan_version, new_steps, replan_reflection = replan_result
@@ -519,7 +527,7 @@ class AgenticLoop:
                                 yield {
                                     "type": "dag_replan", "steps": new_steps,
                                     "planned_at": _now_str(), "plan_version": plan_version,
-                                    "reason": f"并行组异常，正在重新规划...",
+                                    "reason": f"并行组异常，正在重新规划（含并行任务）...",
                                     "reflection": replan_reflection,
                                 }
                     continue  # 跳过本轮LLM调用
@@ -902,10 +910,9 @@ class AgenticLoop:
                     _log_llm_dialogue(self._log_dir, "系统",
                         f"节点{dag_node_index} [{node_name}] 执行异常: {error_msg}", "节点异常")
 
-                    yield {
-                        "type": "dag_node_output", "index": dag_node_index,
-                        "output": error_msg,
-                    }
+                    # 工具执行异常记录到日志，不输出到前端（防止泄露）
+                    _log_llm_dialogue(self._log_dir, "系统",
+                        f"工具执行异常 节点{node_name}: {error_msg}", "工具异常")
                     yield {
                         "type": "dag_node_complete", "index": dag_node_index,
                         "status": "failed", "result": error_msg,
@@ -939,10 +946,9 @@ class AgenticLoop:
                     reason = eval_result.get("reason", "")
                     suggestion = eval_result.get("suggestion", "")
                     
-                    yield {
-                        "type": "dag_node_output", "index": dag_node_index,
-                        "output": f"[质量评估] 操作: {action}, 原因: {reason}"
-                    }
+                    # 质量评估结果记录到日志，不输出到前端（防止泄露）
+                    _log_llm_dialogue(self._log_dir, "系统",
+                        f"质量评估 节点{node_name}: 操作={action}, 原因={reason}", "质量评估")
                     
                     if action == "retry":
                         # 重试：增加计数，注入反馈消息，让LLM重新尝试
@@ -1001,7 +1007,11 @@ class AgenticLoop:
                         replan_result = self._try_replan(
                             user_input, messages, completed_nodes,
                             dag_node_index,
-                            f"节点 [{node_name}] 执行异常: {error_msg[:200]}",
+                            f"节点 [{node_name}] 执行异常: {error_msg[:200]}。\n"
+                            f"重要提示：在重新规划时请考虑：\n"
+                            f"1. 是否有其他不依赖当前节点结果的任务可以并行执行？\n"
+                            f"2. 标记可并行的步骤为同一 parallel_group（如 'A'、'B'）\n"
+                            f"3. 避免再次使用可能失败的工具或命令",
                             plan_version
                         )
                         if replan_result:
@@ -1012,7 +1022,7 @@ class AgenticLoop:
                                 "steps": new_steps,
                                 "planned_at": _now_str(),
                                 "plan_version": plan_version,
-                                "reason": f"节点 [{node_name}] 执行异常，正在重新规划...",
+                                "reason": f"节点 [{node_name}] 执行异常，正在重新规划（含并行任务）...",
                                 "reflection": replan_reflection,
                             }
                         continue  # 跳过后续处理，进入下一轮循环
@@ -1021,12 +1031,9 @@ class AgenticLoop:
                 if is_stuck:
                     result_text = f"[卡点检测] {stuck_reason}"
 
-                    # 分段推送输出
-                    for i in range(0, len(result_text), 200):
-                        yield {
-                            "type": "dag_node_output", "index": dag_node_index,
-                            "output": result_text[i:i + 200],
-                        }
+                    # 卡点检测结果记录到日志，不输出到前端（防止泄露）
+                    _log_llm_dialogue(self._log_dir, "系统",
+                        f"卡点检测 节点{node_name}: {stuck_reason}", "卡点检测")
 
                     yield {
                         "type": "dag_node_stuck",
@@ -1070,10 +1077,9 @@ class AgenticLoop:
                     reason = eval_result.get("reason", "")
                     suggestion = eval_result.get("suggestion", "")
                     
-                    yield {
-                        "type": "dag_node_output", "index": dag_node_index,
-                        "output": f"[质量评估] 卡点检测, 操作: {action}, 原因: {reason}"
-                    }
+                    # 质量评估结果记录到日志，不输出到前端（防止泄露）
+                    _log_llm_dialogue(self._log_dir, "系统",
+                        f"质量评估 卡点检测 {node_name}: 操作={action}, 原因={reason}", "质量评估")
                     
                     if action == "retry":
                         # 重试：增加计数，注入反馈消息，重新执行当前节点
@@ -1099,11 +1105,16 @@ class AgenticLoop:
                     
                     else:  # replan
                         # 重规划：重置计数，触发重规划
+                        # 提示LLM：在重新规划时，考虑并行执行不依赖当前节点的其他任务
                         self._node_retry_counts[node_name] = 0
                         replan_result = self._try_replan(
                             user_input, messages, completed_nodes,
                             dag_node_index,
-                            f"节点 [{node_name}] 被卡点检测终止: {stuck_reason}",
+                            f"节点 [{node_name}] 被卡点检测终止: {stuck_reason}。\n"
+                            f"重要提示：当前节点因超时被终止，在重新规划时请考虑：\n"
+                            f"1. 是否有其他不依赖当前节点结果的任务可以并行执行？\n"
+                            f"2. 标记可并行的步骤为同一 parallel_group（如 'A'、'B'）\n"
+                            f"3. 避免再次使用可能导致超时的工具或命令",
                             plan_version
                         )
                         if replan_result:
@@ -1114,7 +1125,7 @@ class AgenticLoop:
                                 "steps": new_steps,
                                 "planned_at": _now_str(),
                                 "plan_version": plan_version,
-                                "reason": f"卡点检测: {stuck_reason}，正在重新规划...",
+                                "reason": f"卡点检测: {stuck_reason}，正在重新规划（含并行任务）...",
                                 "reflection": replan_reflection,
                             }
                         continue
@@ -1187,10 +1198,9 @@ class AgenticLoop:
                         
                         if not eval_result["pass"]:
                             # 不达标：根据action字段决定处理方式
-                            yield {
-                                "type": "dag_node_output", "index": dag_node_index,
-                                "output": f"[质量评估] 不达标, 操作: {eval_action}, 原因: {eval_result['reason']}"
-                            }
+                            # 节点自审结果记录到日志，不输出到前端（防止泄露）
+                            _log_llm_dialogue(self._log_dir, "系统",
+                                f"节点自审不达标 {node_name}: 操作={eval_action}, 原因={eval_result['reason']}", "节点自审")
                             
                             if eval_action == "retry":
                                 # 重试：注入反馈消息，重新执行当前节点
@@ -1233,7 +1243,11 @@ class AgenticLoop:
                                 replan_result = self._try_replan(
                                     user_input, messages, completed_nodes,
                                     dag_node_index,
-                                    f"节点 [{node_name}] 自审不达标: {eval_result['reason']}",
+                                    f"节点 [{node_name}] 自审不达标: {eval_result['reason']}。\n"
+                                    f"重要提示：在重新规划时请考虑：\n"
+                                    f"1. 是否有其他不依赖当前节点结果的任务可以并行执行？\n"
+                                    f"2. 标记可并行的步骤为同一 parallel_group（如 'A'、'B'）\n"
+                                    f"3. 避免再次使用可能导致问题的工具或命令",
                                     plan_version
                                 )
                                 if replan_result:
@@ -1244,7 +1258,7 @@ class AgenticLoop:
                                         "steps": new_steps,
                                         "planned_at": _now_str(),
                                         "plan_version": plan_version,
-                                        "reason": f"节点 [{node_name}] 自审不达标，正在重新规划...",
+                                        "reason": f"节点 [{node_name}] 自审不达标，正在重新规划（含并行任务）...",
                                         "reflection": replan_reflection,
                                     }
                                 continue
@@ -1337,10 +1351,9 @@ class AgenticLoop:
                         reason = eval_result.get("reason", "")
                         suggestion = eval_result.get("suggestion", "")
                         
-                        yield {
-                            "type": "dag_node_output", "index": dag_node_index,
-                            "output": f"[质量评估] 操作: {action}, 原因: {reason}"
-                        }
+                        # 质量评估结果记录到日志，不输出到前端（防止泄露）
+                        _log_llm_dialogue(self._log_dir, "系统",
+                            f"质量评估 节点{node_name}: 操作={action}, 原因={reason}", "质量评估")
                         
                         if action == "retry":
                             # 重试：增加计数，注入反馈消息，重新执行当前节点
@@ -1369,7 +1382,12 @@ class AgenticLoop:
                             self._node_retry_counts[node_name] = 0
                             replan_result = self._try_replan(
                                 user_input, messages, completed_nodes,
-                                dag_node_index, f"节点 [{node_name}] 执行失败: {result_text[:200]}",
+                                dag_node_index,
+                                f"节点 [{node_name}] 执行失败: {result_text[:200]}。\n"
+                                f"重要提示：在重新规划时请考虑：\n"
+                                f"1. 是否有其他不依赖当前节点结果的任务可以并行执行？\n"
+                                f"2. 标记可并行的步骤为同一 parallel_group（如 'A'、'B'）\n"
+                                f"3. 避免再次使用可能失败的工具或命令",
                                 plan_version
                             )
                             if replan_result:
@@ -1380,7 +1398,7 @@ class AgenticLoop:
                                     "steps": new_steps,
                                     "planned_at": _now_str(),
                                     "plan_version": plan_version,
-                                    "reason": f"节点 [{node_name}] 执行失败，正在重新规划...",
+                                    "reason": f"节点 [{node_name}] 执行失败，正在重新规划（含并行任务）...",
                                     "reflection": replan_reflection,
                                 }
                             continue  # 重新进入思考阶段
@@ -1394,10 +1412,9 @@ class AgenticLoop:
                     _log_llm_dialogue(self._log_dir, "系统",
                         f"节点{dag_node_index} [{node_name}] 结果处理异常: {error_msg}", "节点异常")
 
-                    yield {
-                        "type": "dag_node_output", "index": dag_node_index,
-                        "output": error_msg,
-                    }
+                    # 结果处理异常记录到日志，不输出到前端（防止泄露）
+                    _log_llm_dialogue(self._log_dir, "系统",
+                        f"结果处理异常 节点{node_name}: {error_msg}", "结果异常")
                     yield {
                         "type": "dag_node_complete", "index": dag_node_index,
                         "status": "failed", "result": error_msg,
@@ -1431,10 +1448,9 @@ class AgenticLoop:
                     reason = eval_result.get("reason", "")
                     suggestion = eval_result.get("suggestion", "")
                     
-                    yield {
-                        "type": "dag_node_output", "index": dag_node_index,
-                        "output": f"[质量评估] 操作: {action}, 原因: {reason}"
-                    }
+                    # 质量评估结果记录到日志，不输出到前端（防止泄露）
+                    _log_llm_dialogue(self._log_dir, "系统",
+                        f"质量评估 结果处理异常 {node_name}: 操作={action}, 原因={reason}", "质量评估")
                     
                     if action == "retry":
                         # 重试：增加计数，注入反馈消息，让LLM重新尝试
@@ -1493,7 +1509,11 @@ class AgenticLoop:
                         replan_result = self._try_replan(
                             user_input, messages, completed_nodes,
                             dag_node_index,
-                            f"节点 [{node_name}] 结果处理异常: {error_msg[:200]}",
+                            f"节点 [{node_name}] 结果处理异常: {error_msg[:200]}。\n"
+                            f"重要提示：在重新规划时请考虑：\n"
+                            f"1. 是否有其他不依赖当前节点结果的任务可以并行执行？\n"
+                            f"2. 标记可并行的步骤为同一 parallel_group（如 'A'、'B'）\n"
+                            f"3. 避免再次使用可能导致问题的工具或命令",
                             plan_version
                         )
                         if replan_result:
@@ -1504,7 +1524,7 @@ class AgenticLoop:
                                 "steps": new_steps,
                                 "planned_at": _now_str(),
                                 "plan_version": plan_version,
-                                "reason": f"节点 [{node_name}] 结果处理异常，正在重新规划...",
+                                "reason": f"节点 [{node_name}] 结果处理异常，正在重新规划（含并行任务）...",
                                 "reflection": replan_reflection,
                             }
                         continue
@@ -2798,26 +2818,33 @@ class AgenticLoop:
         return False, "", ""
 
     def _kill_stuck_process(self):
-        """终止卡住的子进程树（Windows）
+        """终止卡住的子进程树（Windows）- 静默版本，不弹出系统窗口。
         通过 wmic 查找当前 Python 进程的所有子进程并终止。
+        使用 CREATE_NO_WINDOW 标志避免弹出 Windows 系统对话框。
         """
+        _CREATE_NO_WINDOW = 0x08000000
         try:
             my_pid = os.getpid()
-            # 使用 wmic 查找子进程
+            # 使用 wmic 查找子进程（静默模式）
             result = subprocess.run(
                 ["wmic", "process", "where", f"ParentProcessId={my_pid}",
                  "get", "ProcessId", "/format:csv"],
-                capture_output=True, text=True, timeout=5
+                capture_output=True, text=True, timeout=5,
+                creationflags=_CREATE_NO_WINDOW
             )
             if result.returncode == 0:
                 for line in result.stdout.strip().split('\n'):
                     parts = line.strip().split(',')
                     if len(parts) >= 2 and parts[-1].strip().isdigit():
                         child_pid = parts[-1].strip()
-                        subprocess.run(
-                            ["taskkill", "/F", "/T", "/PID", child_pid],
-                            capture_output=True, timeout=5
-                        )
+                        try:
+                            subprocess.run(
+                                ["taskkill", "/F", "/T", "/PID", child_pid],
+                                capture_output=True, timeout=5,
+                                creationflags=_CREATE_NO_WINDOW
+                            )
+                        except Exception:
+                            pass  # 单个进程终止失败不影响其他进程
         except Exception:
             pass
 

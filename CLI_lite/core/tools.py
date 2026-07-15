@@ -497,11 +497,18 @@ class ToolRunCommand:
                 # 关键修复：设置环境变量强制Python使用UTF-8，并用Out-File -Encoding utf8替代*>
                 env_prefix = "$env:PYTHONIOENCODING='utf-8'; $env:PYTHONUTF8='1'; "
                 redirect_cmd = f'{env_prefix}{command} 2>&1 | Out-File -Encoding utf8 "{output_file}"'
+                script_timeout = False
+                script_error = None
                 try:
                     self._executor.execute(redirect_cmd, cwd=cwd)
                 except RuntimeError as e:
-                    # 即使报错也读取已有的输出
-                    pass
+                    error_str = str(e)
+                    if "超时" in error_str or "timeout" in error_str.lower():
+                        script_timeout = True
+                        script_error = error_str
+                    else:
+                        # 非超时错误，记录但继续读取已有输出
+                        script_error = error_str
 
                 # 读取输出文件
                 if os.path.exists(output_file):
@@ -514,8 +521,13 @@ class ToolRunCommand:
                             output = output[:self.MAX_OUTPUT_CHARS]
                             output += f"\n\n... (输出截断，共 {total_len} 字符，已显示前 {self.MAX_OUTPUT_CHARS} 字符)"
                             output += "\n【提示】完整输出已保存到文件，可用read_file分段读取"
-                        return f"Python脚本执行完成，输出已保存到: {output_file}\n\n{output}"
+                        if script_timeout:
+                            return f"Python脚本执行超时({timeout}秒)，但已有部分输出已保存到: {output_file}\n\n{output}\n\n【警告】脚本超时，输出可能不完整。建议检查脚本是否有死循环或长时间阻塞操作。"
+                        error_hint = f"\n【注意】脚本执行时有错误: {script_error}" if script_error else ""
+                        return f"Python脚本执行完成，输出已保存到: {output_file}\n\n{output}{error_hint}"
                     else:
+                        if script_timeout:
+                            raise RuntimeError(f"Python脚本执行超时({timeout}秒)，无输出。脚本可能在等待输入或有死循环。")
                         # 输出文件存在但为空，尝试直接运行获取错误信息
                         try:
                             err_result = self._executor.execute(f'{env_prefix}{command}', cwd=cwd)
@@ -523,6 +535,8 @@ class ToolRunCommand:
                         except RuntimeError as e2:
                             return f"Python脚本执行完成（无输出），文件: {output_file}\n错误: {str(e2)}"
                 else:
+                    if script_timeout:
+                        raise RuntimeError(f"Python脚本执行超时({timeout}秒)，无输出文件。脚本可能在等待输入或有死循环。")
                     # 输出文件未生成，直接运行命令获取错误信息
                     try:
                         err_result = self._executor.execute(f'{env_prefix}{command}', cwd=cwd)

@@ -164,7 +164,7 @@ class ContextManager:
         混合检索相关历史对话：
         1. 关键词匹配（基于词典）
         2. 向量语义搜索（TF-IDF + 余弦相似度）
-        返回按相关性排序的历史片段
+        返回按相关性排序的历史片段（排除最近N轮已包含的内容，避免重复注入）
         """
         if not all_history:
             return []
@@ -175,8 +175,43 @@ class ContextManager:
         # 混合检索
         results = self.retriever.search(user_input, keywords)
 
-        # 去重：排除已在最近N轮历史中的内容
-        return results
+        # 去重：排除已在最近N轮历史中的内容（避免重复注入导致记忆混乱）
+        # 取最近 history_rounds 轮作为已知内容
+        recent_count = min(self.history_rounds * 2, len(all_history))
+        recent_history = all_history[-recent_count:] if recent_count > 0 else []
+        
+        # 提取最近历史的内容摘要用于去重
+        recent_contents = set()
+        for msg in recent_history:
+            content = msg.get("content", "").strip()
+            if content and len(content) > 20:  # 只对有意义的内容去重
+                # 使用内容的前200字符作为去重key（避免过长内容影响比较）
+                recent_contents.add(content[:200])
+        
+        # 过滤掉与最近历史重复的检索结果
+        filtered_results = []
+        for snippet in results:
+            snippet_msgs = snippet.get("messages", [])
+            is_duplicate = False
+            for msg in snippet_msgs:
+                content = msg.get("content", "").strip()
+                if content and len(content) > 20:
+                    content_key = content[:200]
+                    # 检查是否与最近历史内容高度重叠
+                    if content_key in recent_contents:
+                        is_duplicate = True
+                        break
+                    # 检查重叠率（防止部分匹配导致的漏检）
+                    for rc in recent_contents:
+                        if len(rc) > 50 and (content_key in rc or rc in content_key):
+                            is_duplicate = True
+                            break
+                    if is_duplicate:
+                        break
+            if not is_duplicate:
+                filtered_results.append(snippet)
+        
+        return filtered_results
 
     def _build_retrieved_context(self, snippets: list[dict]) -> list:
         """将检索结果转换为上下文消息格式"""
