@@ -1,0 +1,22 @@
+{
+  "name": "超大文件处理",
+  "description": "超大Excel/CSV文件处理能力，支持千万行数据的分块读取、统计分析、筛选导出、格式转换",
+  "trigger_keywords": ["大数据", "大文件", "千万行", "百万行", "Excel大文件", "CSV大文件", "数据量大", "内存不足", "分块处理", "chunk", "大数据分析"],
+  "steps": [
+    {"step": 1, "action": "探查文件结构（读取前5行，获取列名、数据类型、文件大小）", "tool": "read_file(limit=5) 或 pandas read_csv(nrows=5)", "note": "先确认编码（utf-8/gbk）和分隔符"},
+    {"step": 2, "action": "统计总行数（不加载全文）", "tool": "逐块计数或wc -l", "note": "了解数据规模，决定chunksize"},
+    {"step": 3, "action": "编写分块处理脚本", "tool": "write_file + run_command", "note": "chunksize=100000，每个chunk处理后释放"},
+    {"step": 4, "action": "执行脚本并输出结果", "tool": "run_command(python script.py)", "note": "只输出统计摘要，不输出原始数据"},
+    {"step": 5, "action": "读取并展示结果", "tool": "read_file", "note": "结果控制在2000字符以内"}
+  ],
+  "tools_used": ["read_file", "write_file", "run_command", "pandas", "openpyxl"],
+  "tips": [
+    "超过10万行的文件必须使用chunksize分块读取，禁止一次性加载",
+    "大Excel文件（>50MB）建议先转CSV再处理，速度提升10倍以上",
+    "中文编码优先尝试utf-8，失败再用gbk",
+    "统计分析用groupby+agg，不要遍历DataFrame行",
+    "输出结果控制在2000字符以内，只输出摘要不输出原始数据",
+    "Parquet格式比CSV快5-10倍，如果需要多次分析建议先转Parquet"
+  ],
+  "example": "用户上传了一个500万行的销售数据CSV，需要按地区和产品类别统计销售额。使用分块读取（chunksize=100000），每块做groupby聚合，最后合并结果输出摘要表。"
+}

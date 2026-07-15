@@ -1,0 +1,21 @@
+{
+  "id": "agentic_session_10143e13",
+  "name": "读取 test_data/test_sales.csv 前5行，保存到 data/output/thinking_tes",
+  "description": "Agentic Loop 执行记录 - session_10143e13",
+  "nodes": {
+    "node_1": {
+      "id": "node_1",
+      "name": "LLM调用失败",
+      "description": "",
+      "command": "N/A",
+      "dependencies": [],
+      "status": "failed",
+      "result": "LLM调用失败",
+      "retry_count": 0,
+      "start_time": 1783068777.3485882,
+      "end_time": 1783068777.3485882
+    }
+  },
+  "created_at": 1783068777.3485882,
+  "status": "failed"
+}

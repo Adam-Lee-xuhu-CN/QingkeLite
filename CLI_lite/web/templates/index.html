@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>青稞·lite - AI助手</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="app-container">
+        <header class="app-header">
+            <h1>青稞·lite</h1>
+            <nav class="nav-tabs">
+                <a href="#" class="nav-tab active" data-tab="chat">对话</a>
+                <a href="#" class="nav-tab" data-tab="dag">DAG</a>
+                <a href="#" class="nav-tab" data-tab="prompt">提示词</a>
+                <a href="#" class="nav-tab" data-tab="logs">日志</a>
+                <a href="#" class="nav-tab" data-tab="preferences">偏好</a>
+                <a href="#" class="nav-tab" data-tab="config">配置</a>
+            </nav>
+        </header>
+
+        <!-- 聊天TAB -->
+        <main class="tab-content active" id="tab-chat">
+            <div class="chat-container">
+                <div class="chat-messages" id="chatMessages">
+                    <div class="message assistant">
+                        <div class="message-content">
+                            你好！我是青稞，有什么可以帮你的？
+                        </div>
+                    </div>
+                </div>
+
+                <div class="chat-input">
+                    <div class="file-upload-area">
+                        <input type="file" id="fileInput" multiple style="display: none;" onchange="handleFileSelect(event)">
+                        <button class="file-upload-btn" onclick="document.getElementById('fileInput').click()" title="上传文件">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                <polyline points="17 8 12 3 7 8"></polyline>
+                                <line x1="12" y1="3" x2="12" y2="15"></line>
+                            </svg>
+                            <span>上传文件</span>
+                        </button>
+                        <div class="file-drop-hint">支持拖拽文件到此处</div>
+                        <button class="file-upload-btn workspace-btn" onclick="selectWorkspaceFolder()" title="添加工作区文件夹">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+                                <line x1="12" y1="11" x2="12" y2="17"></line>
+                                <line x1="9" y1="14" x2="15" y2="14"></line>
+                            </svg>
+                            <span>添加工作区</span>
+                        </button>
+                        <div id="workspaceTag" class="workspace-tag hidden"></div>
+                        <button class="file-upload-btn clear-chat-btn" onclick="clearChatDisplay()" title="清空聊天栏显示">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="3 6 5 6 21 6"></polyline>
+                                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                            </svg>
+                            <span>清空聊天</span>
+                        </button>
+                    </div>
+                    <textarea id="chatInput" placeholder="输入你的问题...（支持上传文件，文件内容会自动解析并附加到消息中）" rows="3"></textarea>
+                    <button id="sendBtn" onclick="sendMessage()">发送</button>
+                    <button id="stopAllBtn" class="stop-all-btn hidden" onclick="abortDag()" title="紧急停止所有任务">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                            <rect x="4" y="4" width="16" height="16" rx="2"/>
+                        </svg>
+                        <span>停止任务</span>
+                    </button>
+                </div>
+            </div>
+        </main>
+
+        <!-- DAG TAB -->
+        <main class="tab-content" id="tab-dag">
+            <div class="content-container">
+                <h2>DAG任务管理</h2>
+                <div id="dagContent">
+                    <p class="empty-state">暂无DAG任务</p>
+                </div>
+            </div>
+        </main>
+
+        <!-- 日志TAB -->
+        <main class="tab-content" id="tab-logs">
+            <div class="content-container">
+                <h2>系统日志</h2>
+                <div id="logsContent">
+                    <p class="empty-state">暂无日志</p>
+                </div>
+            </div>
+        </main>
+
+        <!-- 偏好TAB -->
+        <main class="tab-content" id="tab-preferences">
+            <div class="content-container">
+                <h2>用户偏好</h2>
+                <div id="preferencesContent">
+                    <p class="empty-state">暂无偏好设置</p>
+                </div>
+            </div>
+        </main>
+
+        <!-- Prompt TAB -->
+        <main class="tab-content" id="tab-prompt">
+            <div class="content-container">
+                <div class="prompt-header">
+                    <h2>系统提示词编辑</h2>
+                    <div class="prompt-actions">
+                        <button class="btn-primary" onclick="savePrompt()">保存</button>
+                        <button class="btn-secondary" onclick="resetPrompt()">恢复初始化</button>
+                        <span id="promptStatus" class="prompt-status"></span>
+                    </div>
+                </div>
+                <div class="prompt-editor-wrap">
+                    <textarea id="promptEditor" class="prompt-editor" spellcheck="false" placeholder="加载中..."></textarea>
+                </div>
+                <div class="prompt-hint">
+                    <p>提示：修改后点击「保存」立即生效。保存前会自动备份当前版本。</p>
+                    <p>如需恢复系统默认模板，点击「恢复初始化」。</p>
+                </div>
+            </div>
+        </main>
+
+        <!-- 配置TAB -->
+        <main class="tab-content" id="tab-config">
+            <div class="content-container">
+                <section class="config-section">
+                    <h2>LLM 配置</h2>
+                    <div class="config-form">
+                        <div class="form-group">
+                            <label>Provider</label>
+                            <select id="llmProvider">
+                                <option value="dify">Dify</option>
+                                <option value="openai">OpenAI兼容（腾讯云/阿里云等）</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Dify API地址</label>
+                            <input type="text" id="difyApiUrl" placeholder="http://localhost:8080/v1/chat-messages">
+                        </div>
+                        <div class="form-group">
+                            <label>Dify API Key</label>
+                            <input type="password" id="difyApiKey" placeholder="输入API Key">
+                        </div>
+                        <div class="form-group">
+                            <label>OpenAI API地址</label>
+                            <input type="text" id="openaiApiUrl" placeholder="https://tokenhub.tencentmaas.com/v1">
+                        </div>
+                        <div class="form-group">
+                            <label>OpenAI API Key</label>
+                            <input type="password" id="openaiApiKey" placeholder="sk-xxx">
+                        </div>
+                        <div class="form-group">
+                            <label>模型名称</label>
+                            <input type="text" id="openaiModel" placeholder="qwen3.5-plus">
+                        </div>
+                        <div class="form-group">
+                            <label>超时时间（秒）</label>
+                            <input type="number" id="llmTimeout" value="60">
+                        </div>
+                    </div>
+                </section>
+
+                <section class="config-section">
+                    <h2>服务配置</h2>
+                    <div class="config-form">
+                        <div class="form-group">
+                            <label>服务端口</label>
+                            <input type="number" id="serverPort" value="2253" min="1024" max="65535">
+                            <small class="form-hint">修改后需重启应用生效</small>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="config-section">
+                    <h2>上下文配置</h2>
+                    <div class="config-form">
+                        <div class="form-group">
+                            <label>历史对话轮次</label>
+                            <input type="number" id="historyRounds" value="3">
+                        </div>
+                        <div class="form-group">
+                            <label>最大片段长度（字符）</label>
+                            <input type="number" id="maxSnippetLength" value="2000">
+                        </div>
+                        <div class="form-group">
+                            <label>最大Token预算</label>
+                            <input type="number" id="maxTokens" value="8000">
+                        </div>
+                    </div>
+                </section>
+
+                <section class="config-section">
+                    <h2>偏好学习配置</h2>
+                    <div class="config-form">
+                        <div class="form-group">
+                            <label>学习间隔（对话轮次）</label>
+                            <input type="number" id="learningInterval" value="10">
+                        </div>
+                        <div class="form-group">
+                            <label>置信度阈值</label>
+                            <input type="number" id="confidenceThreshold" value="0.7" step="0.1" min="0" max="1">
+                        </div>
+                    </div>
+                </section>
+
+                <section class="config-section">
+                    <h2>CLI 配置</h2>
+                    <div class="config-form">
+                        <div class="form-group">
+                            <label>Shell类型</label>
+                            <select id="shellType">
+                                <option value="powershell">PowerShell</option>
+                                <option value="cmd">CMD</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>命令超时（秒）</label>
+                            <input type="number" id="cliTimeout" value="30">
+                        </div>
+                    </div>
+                </section>
+
+                <section class="config-section">
+                    <h2>调度中心配置</h2>
+                    <div class="config-form">
+                        <div class="form-group">
+                            <label>轮询间隔（秒）</label>
+                            <input type="number" id="pollInterval" value="1.0" step="0.1">
+                        </div>
+                        <div class="form-group">
+                            <label>最大并发任务数</label>
+                            <input type="number" id="maxConcurrent" value="5">
+                        </div>
+                        <div class="form-group">
+                            <label>最大重试次数</label>
+                            <input type="number" id="maxRetries" value="2">
+                        </div>
+                    </div>
+                </section>
+
+                <section class="config-section">
+                    <h2>系统信息</h2>
+                    <div class="config-info">
+                        <div class="info-item">
+                            <label>版本</label>
+                            <span id="appVersion">1.0.0</span>
+                        </div>
+                        <div class="info-item">
+                            <label>Python版本</label>
+                            <span id="pythonVersion">-</span>
+                        </div>
+                        <div class="info-item">
+                            <label>Flask版本</label>
+                            <span id="flaskVersion">-</span>
+                        </div>
+                    </div>
+                </section>
+
+                <div class="config-actions">
+                    <button class="btn-primary" onclick="saveConfig()">保存配置</button>
+                    <button class="btn-secondary" onclick="loadConfig()">重新加载</button>
+                    <button class="btn-danger" onclick="resetConfig()">恢复默认</button>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/config.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/prompt.js') }}"></script>
+</body>
+</html>
