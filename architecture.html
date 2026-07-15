@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>CLI_lite 功能模块与数据流转图</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #0f1117; font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif; color: #e0e0e0; padding: 30px; }
+  h1 { text-align: center; font-size: 22px; color: #fff; margin-bottom: 6px; letter-spacing: 2px; }
+  .subtitle { text-align: center; font-size: 13px; color: #888; margin-bottom: 28px; }
+  svg { display: block; margin: 0 auto; }
+  /* 模块框 */
+  .mod-box { rx: 8; ry: 8; stroke-width: 2; }
+  .mod-label { font-size: 13px; font-weight: 600; fill: #fff; text-anchor: middle; }
+  .mod-sub { font-size: 10px; fill: #bbb; text-anchor: middle; }
+  /* 箭头 */
+  .arrow { stroke-width: 1.8; fill: none; }
+  .arrow-label { font-size: 9.5px; fill: #aaa; }
+  /* 区域背景 */
+  .zone { rx: 12; ry: 12; stroke-width: 1; stroke-dasharray: 6 3; }
+  .zone-label { font-size: 11px; font-weight: 700; letter-spacing: 1px; }
+  /* 图例 */
+  .legend text { font-size: 10px; fill: #ccc; }
+  .legend rect { rx: 3; ry: 3; stroke-width: 1; }
+</style>
+</head>
+<body>
+<h1>CLI_lite 功能模块与数据流转图</h1>
+<p class="subtitle">Architecture &amp; Data Flow Overview</p>
+
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 820" width="1200" height="820">
+  <defs>
+    <!-- 箭头标记 -->
+    <marker id="ah-blue" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+      <path d="M0,0 L8,3 L0,6 Z" fill="#4fc3f7"/>
+    </marker>
+    <marker id="ah-green" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+      <path d="M0,0 L8,3 L0,6 Z" fill="#66bb6a"/>
+    </marker>
+    <marker id="ah-orange" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+      <path d="M0,0 L8,3 L0,6 Z" fill="#ffa726"/>
+    </marker>
+    <marker id="ah-purple" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+      <path d="M0,0 L8,3 L0,6 Z" fill="#ab47bc"/>
+    </marker>
+    <marker id="ah-red" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+      <path d="M0,0 L8,3 L0,6 Z" fill="#ef5350"/>
+    </marker>
+    <marker id="ah-cyan" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+      <path d="M0,0 L8,3 L0,6 Z" fill="#26c6da"/>
+    </marker>
+    <!-- 渐变 -->
+    <linearGradient id="g-blue" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1565c0"/>
+      <stop offset="100%" stop-color="#0d47a1"/>
+    </linearGradient>
+    <linearGradient id="g-teal" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#00695c"/>
+      <stop offset="100%" stop-color="#004d40"/>
+    </linearGradient>
+    <linearGradient id="g-purple" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#6a1b9a"/>
+      <stop offset="100%" stop-color="#4a148c"/>
+    </linearGradient>
+    <linearGradient id="g-orange" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#e65100"/>
+      <stop offset="100%" stop-color="#bf360c"/>
+    </linearGradient>
+    <linearGradient id="g-red" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#c62828"/>
+      <stop offset="100%" stop-color="#b71c1c"/>
+    </linearGradient>
+    <linearGradient id="g-gray" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#37474f"/>
+      <stop offset="100%" stop-color="#263238"/>
+    </linearGradient>
+  </defs>
+
+  <!-- ==================== 区域背景 ==================== -->
+  <!-- 前端区域 -->
+  <rect class="zone" x="20" y="20" width="330" height="780" fill="rgba(33,150,243,0.04)" stroke="#1e88e5" opacity="0.5"/>
+  <text class="zone-label" x="40" y="46" fill="#42a5f5">FRONTEND (Browser)</text>
+
+  <!-- Web层区域 -->
+  <rect class="zone" x="380" y="20" width="200" height="400" fill="rgba(76,175,80,0.04)" stroke="#43a047" opacity="0.5"/>
+  <text class="zone-label" x="400" y="46" fill="#66bb6a">WEB ROUTES</text>
+
+  <!-- 核心引擎区域 -->
+  <rect class="zone" x="380" y="440" width="440" height="360" fill="rgba(255,152,0,0.04)" stroke="#ef6c00" opacity="0.5"/>
+  <text class="zone-label" x="400" y="466" fill="#ffa726">CORE ENGINE</text>
+
+  <!-- 外部服务区域 -->
+  <rect class="zone" x="850" y="20" width="330" height="380" fill="rgba(171,71,188,0.04)" stroke="#8e24aa" opacity="0.5"/>
+  <text class="zone-label" x="870" y="46" fill="#ab47bc">EXTERNAL SERVICES</text>
+
+  <!-- 数据存储区域 -->
+  <rect class="zone" x="850" y="420" width="330" height="380" fill="rgba(239,83,80,0.04)" stroke="#e53935" opacity="0.5"/>
+  <text class="zone-label" x="870" y="446" fill="#ef5350">DATA &amp; STORAGE</text>
+
+  <!-- ==================== 前端模块 ==================== -->
+  <!-- 用户 -->
+  <rect class="mod-box" x="80" y="70" width="220" height="50" fill="url(#g-gray)" stroke="#78909c"/>
+  <text class="mod-label" x="190" y="100">User (Browser)</text>
+
+  <!-- 聊天界面 -->
+  <rect class="mod-box" x="80" y="160" width="220" height="50" fill="url(#g-blue)" stroke="#1e88e5"/>
+  <text class="mod-label" x="190" y="185">Chat UI</text>
+  <text class="mod-sub" x="190" y="200">消息输入 / Markdown渲染</text>
+
+  <!-- WBS树形渲染 -->
+  <rect class="mod-box" x="80" y="240" width="220" height="50" fill="url(#g-blue)" stroke="#1e88e5"/>
+  <text class="mod-label" x="190" y="265">WBS Tree Renderer</text>
+  <text class="mod-sub" x="190" y="280">DAG计划 / 轮次分组 / 状态</text>
+
+  <!-- SSE解析器 -->
+  <rect class="mod-box" x="80" y="320" width="220" height="50" fill="url(#g-blue)" stroke="#1e88e5"/>
+  <text class="mod-label" x="190" y="345">SSE Stream Parser</text>
+  <text class="mod-sub" x="190" y="360">事件解析 / DOM更新</text>
+
+  <!-- 配置管理 -->
+  <rect class="mod-box" x="80" y="420" width="220" height="50" fill="url(#g-blue)" stroke="#1e88e5"/>
+  <text class="mod-label" x="190" y="445">Config Panel</text>
+  <text class="mod-sub" x="190" y="460">LLM / 上下文 / 调度 配置</text>
+
+  <!-- DAG管理 -->
+  <rect class="mod-box" x="80" y="500" width="220" height="50" fill="url(#g-blue)" stroke="#1e88e5"/>
+  <text class="mod-label" x="190" y="525">DAG Manager</text>
+  <text class="mod-sub" x="190" y="540">列表 / 详情 / 执行 / 重试</text>
+
+  <!-- 事件总线客户端 -->
+  <rect class="mod-box" x="80" y="580" width="220" height="50" fill="url(#g-blue)" stroke="#1e88e5"/>
+  <text class="mod-label" x="190" y="605">Event Bus Client</text>
+  <text class="mod-sub" x="190" y="620">跨Tab联动 / SSE订阅</text>
+
+  <!-- 文件处理 -->
+  <rect class="mod-box" x="80" y="660" width="220" height="50" fill="url(#g-blue)" stroke="#1e88e5"/>
+  <text class="mod-label" x="190" y="685">File Handler</text>
+  <text class="mod-sub" x="190" y="700">拖拽上传 / 预览 / 附件</text>
+
+  <!-- ==================== Web路由 ==================== -->
+  <!-- API路由 -->
+  <rect class="mod-box" x="400" y="70" width="160" height="55" fill="url(#g-teal)" stroke="#2e7d32"/>
+  <text class="mod-label" x="480" y="93">API Routes</text>
+  <text class="mod-sub" x="480" y="108">/api/chat /api/dag /api/config</text>
+
+  <!-- SSE流路由 -->
+  <rect class="mod-box" x="400" y="150" width="160" height="55" fill="url(#g-teal)" stroke="#2e7d32"/>
+  <text class="mod-label" x="480" y="173">SSE Stream</text>
+  <text class="mod-sub" x="480" y="188">/api/chat/stream</text>
+
+  <!-- 事件路由 -->
+  <rect class="mod-box" x="400" y="230" width="160" height="55" fill="url(#g-teal)" stroke="#2e7d32"/>
+  <text class="mod-label" x="480" y="253">Event Routes</text>
+  <text class="mod-sub" x="480" y="268">publish / stream / latest</text>
+
+  <!-- 页面路由 -->
+  <rect class="mod-box" x="400" y="310" width="160" height="55" fill="url(#g-teal)" stroke="#2e7d32"/>
+  <text class="mod-label" x="480" y="333">Page Routes</text>
+  <text class="mod-sub" x="480" y="348">index.html / dag.html</text>
+
+  <!-- ==================== 核心引擎 ==================== -->
+  <!-- CoreEngine -->
+  <rect class="mod-box" x="400" y="490" width="200" height="55" fill="url(#g-orange)" stroke="#ef6c00"/>
+  <text class="mod-label" x="500" y="513">CoreEngine</text>
+  <text class="mod-sub" x="500" y="530">入口调度 / 配置热重载</text>
+
+  <!-- FrontDeskAgent -->
+  <rect class="mod-box" x="400" y="570" width="200" height="55" fill="url(#g-orange)" stroke="#ef6c00"/>
+  <text class="mod-label" x="500" y="593">FrontDeskAgent</text>
+  <text class="mod-sub" x="500" y="610">意图识别 / 寒暄 / 信息补足</text>
+
+  <!-- AgenticLoop -->
+  <rect class="mod-box" x="630" y="490" width="170" height="55" fill="url(#g-orange)" stroke="#ef6c00"/>
+  <text class="mod-label" x="715" y="513">AgenticLoop</text>
+  <text class="mod-sub" x="715" y="530">任务规划 / 迭代执行</text>
+
+  <!-- LLMGateway -->
+  <rect class="mod-box" x="630" y="570" width="170" height="55" fill="url(#g-orange)" stroke="#ef6c00"/>
+  <text class="mod-label" x="715" y="593">LLMGateway</text>
+  <text class="mod-sub" x="715" y="610">Dify / OpenAI 双协议</text>
+
+  <!-- ContextManager -->
+  <rect class="mod-box" x="400" y="650" width="200" height="55" fill="url(#g-orange)" stroke="#ef6c00"/>
+  <text class="mod-label" x="500" y="673">ContextManager</text>
+  <text class="mod-sub" x="500" y="690">上下文构建 / Token管理</text>
+
+  <!-- PreferenceLearner -->
+  <rect class="mod-box" x="630" y="650" width="170" height="55" fill="url(#g-orange)" stroke="#ef6c00"/>
+  <text class="mod-label" x="715" y="673">PreferenceLearner</text>
+  <text class="mod-sub" x="715" y="690">偏好提取 / 系统提示更新</text>
+
+  <!-- ToolRegistry -->
+  <rect class="mod-box" x="400" y="730" width="200" height="55" fill="url(#g-orange)" stroke="#ef6c00"/>
+  <text class="mod-label" x="500" y="753">ToolRegistry</text>
+  <text class="mod-sub" x="500" y="770">工具注册 / 命令执行(CLI)</text>
+
+  <!-- HistoryRetriever -->
+  <rect class="mod-box" x="630" y="730" width="170" height="55" fill="url(#g-orange)" stroke="#ef6c00"/>
+  <text class="mod-label" x="715" y="753">HistoryRetriever</text>
+  <text class="mod-sub" x="715" y="770">关键词 + TF-IDF 混合检索</text>
+
+  <!-- ==================== 外部服务 ==================== -->
+  <!-- 腾讯云TokenHub -->
+  <rect class="mod-box" x="880" y="70" width="270" height="55" fill="url(#g-purple)" stroke="#8e24aa"/>
+  <text class="mod-label" x="1015" y="93">Tencent TokenHub (OpenAI)</text>
+  <text class="mod-sub" x="1015" y="108">qwen3.5-plus / chat completions</text>
+
+  <!-- Dify API -->
+  <rect class="mod-box" x="880" y="150" width="270" height="55" fill="url(#g-purple)" stroke="#8e24aa"/>
+  <text class="mod-label" x="1015" y="173">Dify API (备选)</text>
+  <text class="mod-sub" x="1015" y="188">SSE流式 / 工作流编排</text>
+
+  <!-- CLI Shell -->
+  <rect class="mod-box" x="880" y="250" width="270" height="55" fill="url(#g-purple)" stroke="#8e24aa"/>
+  <text class="mod-label" x="1015" y="273">System Shell (CLI)</text>
+  <text class="mod-sub" x="1015" y="288">PowerShell / Bash 命令执行</text>
+
+  <!-- 文件系统 -->
+  <rect class="mod-box" x="880" y="330" width="270" height="55" fill="url(#g-purple)" stroke="#8e24aa"/>
+  <text class="mod-label" x="1015" y="353">Local File System</text>
+  <text class="mod-sub" x="1015" y="368">文件读写 / 目录操作</text>
+
+  <!-- ==================== 数据存储 ==================== -->
+  <!-- settings.yaml -->
+  <rect class="mod-box" x="880" y="470" width="130" height="50" fill="url(#g-red)" stroke="#e53935"/>
+  <text class="mod-label" x="945" y="492">settings.yaml</text>
+  <text class="mod-sub" x="945" y="507">全局配置</text>
+
+  <!-- sys_prompt.md -->
+  <rect class="mod-box" x="1020" y="470" width="130" height="50" fill="url(#g-red)" stroke="#e53935"/>
+  <text class="mod-label" x="1085" y="492">sys_prompt.md</text>
+  <text class="mod-sub" x="1085" y="507">系统提示</text>
+
+  <!-- sessions -->
+  <rect class="mod-box" x="880" y="545" width="130" height="50" fill="url(#g-red)" stroke="#e53935"/>
+  <text class="mod-label" x="945" y="567">sessions/</text>
+  <text class="mod-sub" x="945" y="582">对话历史JSON</text>
+
+  <!-- DAG记录 -->
+  <rect class="mod-box" x="1020" y="545" width="130" height="50" fill="url(#g-red)" stroke="#e53935"/>
+  <text class="mod-label" x="1085" y="567">dags/</text>
+  <text class="mod-sub" x="1085" y="582">DAG任务记录</text>
+
+  <!-- preferences -->
+  <rect class="mod-box" x="880" y="620" width="130" height="50" fill="url(#g-red)" stroke="#e53935"/>
+  <text class="mod-label" x="945" y="642">prefs.json</text>
+  <text class="mod-sub" x="945" y="657">用户偏好</text>
+
+  <!-- logs -->
+  <rect class="mod-box" x="1020" y="620" width="130" height="50" fill="url(#g-red)" stroke="#e53935"/>
+  <text class="mod-label" x="1085" y="642">logs/</text>
+  <text class="mod-sub" x="1085" y="657">操作日志</text>
+
+  <!-- keyword_dict -->
+  <rect class="mod-box" x="880" y="695" width="130" height="50" fill="url(#g-red)" stroke="#e53935"/>
+  <text class="mod-label" x="945" y="717">keywords.json</text>
+  <text class="mod-sub" x="945" y="732">关键词词典</text>
+
+  <!-- pref_history -->
+  <rect class="mod-box" x="1020" y="695" width="130" height="50" fill="url(#g-red)" stroke="#e53935"/>
+  <text class="mod-label" x="1085" y="717">pref_history/</text>
+  <text class="mod-sub" x="1085" y="732">偏好变更历史</text>
+
+  <!-- ==================== 数据流连线 ==================== -->
+
+  <!-- 1. 用户 → 聊天界面 -->
+  <line x1="190" y1="120" x2="190" y2="160" class="arrow" stroke="#4fc3f7" marker-end="url(#ah-blue)"/>
+  <text class="arrow-label" x="200" y="143">输入消息</text>
+
+  <!-- 2. 聊天界面 → SSE解析器 -->
+  <line x1="190" y1="210" x2="190" y2="240" class="arrow" stroke="#4fc3f7" marker-end="url(#ah-blue)"/>
+  <text class="arrow-label" x="200" y="228">发送请求</text>
+
+  <!-- 3. SSE解析器 → WBS渲染 -->
+  <line x1="190" y1="290" x2="190" y2="320" class="arrow" stroke="#4fc3f7" marker-end="url(#ah-blue)" opacity="0.6"/>
+
+  <!-- 4. SSE解析器 → API路由 (POST /api/chat/stream) -->
+  <path d="M300,345 L390,175" class="arrow" stroke="#66bb6a" marker-end="url(#ah-green)"/>
+  <text class="arrow-label" x="320" y="255" transform="rotate(-55,320,255)">POST /api/chat/stream</text>
+
+  <!-- 5. 配置面板 → API路由 -->
+  <path d="M300,445 L395,100" class="arrow" stroke="#66bb6a" marker-end="url(#ah-green)" opacity="0.5"/>
+  <text class="arrow-label" x="340" y="280" transform="rotate(-62,340,280)">GET/POST /api/config</text>
+
+  <!-- 6. DAG管理 → API路由 -->
+  <path d="M300,525 L400,110" class="arrow" stroke="#66bb6a" marker-end="url(#ah-green)" opacity="0.4"/>
+  <text class="arrow-label" x="360" y="330" transform="rotate(-65,360,330)">/api/dag/*</text>
+
+  <!-- 7. 事件总线客户端 → 事件路由 -->
+  <path d="M300,605 L400,258" class="arrow" stroke="#66bb6a" marker-end="url(#ah-green)" opacity="0.5"/>
+  <text class="arrow-label" x="350" y="440" transform="rotate(-62,350,440)">SSE /api/events/stream</text>
+
+  <!-- 8. API路由 → CoreEngine -->
+  <path d="M480,125 L480,490" class="arrow" stroke="#ffa726" marker-end="url(#ah-orange)"/>
+  <text class="arrow-label" x="490" y="310">engine.process()</text>
+
+  <!-- 9. SSE路由 → AgenticLoop -->
+  <path d="M530,205 L660,490" class="arrow" stroke="#ffa726" marker-end="url(#ah-orange)"/>
+  <text class="arrow-label" x="610" y="340">agentic_loop.run()</text>
+
+  <!-- 10. CoreEngine → FrontDeskAgent -->
+  <line x1="500" y1="545" x2="500" y2="570" class="arrow" stroke="#ffa726" marker-end="url(#ah-orange)"/>
+  <text class="arrow-label" x="510" y="560">front_desk.process()</text>
+
+  <!-- 11. CoreEngine → AgenticLoop -->
+  <line x1="600" y1="510" x2="630" y2="510" class="arrow" stroke="#ffa726" marker-end="url(#ah-orange)"/>
+
+  <!-- 12. AgenticLoop → LLMGateway -->
+  <line x1="715" y1="545" x2="715" y2="570" class="arrow" stroke="#ffa726" marker-end="url(#ah-orange)"/>
+  <text class="arrow-label" x="725" y="560">_call_llm()</text>
+
+  <!-- 13. AgenticLoop → ToolRegistry -->
+  <path d="M660,545 L540,730" class="arrow" stroke="#ffa726" marker-end="url(#ah-orange)"/>
+  <text class="arrow-label" x="580" y="640">execute(tool)</text>
+
+  <!-- 14. AgenticLoop → ContextManager -->
+  <path d="M660,530 L570,650" class="arrow" stroke="#ffa726" marker-end="url(#ah-orange)" opacity="0.6"/>
+  <text class="arrow-label" x="590" y="590">build_context()</text>
+
+  <!-- 15. FrontDeskAgent → ContextManager -->
+  <line x1="500" y1="625" x2="500" y2="650" class="arrow" stroke="#ffa726" marker-end="url(#ah-orange)" opacity="0.6"/>
+
+  <!-- 16. ContextManager → HistoryRetriever -->
+  <line x1="600" y1="690" x2="630" y2="750" class="arrow" stroke="#ffa726" marker-end="url(#ah-orange)" opacity="0.5"/>
+  <text class="arrow-label" x="620" y="720">retrieve()</text>
+
+  <!-- 17. LLMGateway → 腾讯云TokenHub -->
+  <path d="M800,590 L880,97" class="arrow" stroke="#ab47bc" marker-end="url(#ah-purple)"/>
+  <text class="arrow-label" x="850" y="340" transform="rotate(-65,850,340)">OpenAI API (主)</text>
+
+  <!-- 18. LLMGateway → Dify -->
+  <path d="M800,600 L880,177" class="arrow" stroke="#ab47bc" marker-end="url(#ah-purple)" opacity="0.5"/>
+  <text class="arrow-label" x="855" y="400" transform="rotate(-65,855,400)">Dify API (备)</text>
+
+  <!-- 19. ToolRegistry → CLI Shell -->
+  <path d="M600,755 L880,277" class="arrow" stroke="#ab47bc" marker-end="url(#ah-purple)"/>
+  <text class="arrow-label" x="750" y="510" transform="rotate(-40,750,510)">subprocess</text>
+
+  <!-- 20. ToolRegistry → 文件系统 -->
+  <path d="M600,770 L880,355" class="arrow" stroke="#ab47bc" marker-end="url(#ah-purple)" opacity="0.5"/>
+  <text class="arrow-label" x="760" y="570" transform="rotate(-35,760,570)">file I/O</text>
+
+  <!-- 21. ContextManager → sessions/ -->
+  <path d="M600,680 L880,570" class="arrow" stroke="#ef5350" marker-end="url(#ah-red)" opacity="0.6"/>
+  <text class="arrow-label" x="750" y="620">save_conversation()</text>
+
+  <!-- 22. CoreEngine → settings.yaml -->
+  <path d="M600,500 L880,495" class="arrow" stroke="#ef5350" marker-end="url(#ah-red)" opacity="0.5"/>
+  <text class="arrow-label" x="750" y="490">config reload</text>
+
+  <!-- 23. PreferenceLearner → prefs.json -->
+  <path d="M800,680 L880,645" class="arrow" stroke="#ef5350" marker-end="url(#ah-red)" opacity="0.6"/>
+  <text class="arrow-label" x="845" y="655">save</text>
+
+  <!-- 24. PreferenceLearner → sys_prompt.md -->
+  <path d="M800,670 L1020,495" class="arrow" stroke="#ef5350" marker-end="url(#ah-red)" opacity="0.5"/>
+  <text class="arrow-label" x="920" y="570" transform="rotate(-30,920,570)">update prompt</text>
+
+  <!-- 25. CoreEngine → dags/ -->
+  <path d="M600,530 L1020,570" class="arrow" stroke="#ef5350" marker-end="url(#ah-red)" opacity="0.4"/>
+  <text class="arrow-label" x="820" y="545">save DAG JSON</text>
+
+  <!-- 26. ContextManager → sys_prompt.md (读取) -->
+  <path d="M600,660 L1020,500" class="arrow" stroke="#26c6da" marker-end="url(#ah-cyan)" opacity="0.4"/>
+  <text class="arrow-label" x="830" y="570" transform="rotate(-20,830,570)">load prompt</text>
+
+  <!-- ==================== SSE事件流标注 ==================== -->
+  <rect x="30" y="740" width="310" height="50" fill="rgba(79,195,247,0.08)" stroke="#4fc3f7" rx="6" ry="6"/>
+  <text x="45" y="758" font-size="10" fill="#4fc3f7" font-weight="600">SSE Event Chain:</text>
+  <text x="45" y="775" font-size="9" fill="#90caf9">analysis → dag_planning → dag_plan → [dag_node_start → dag_node_output → dag_node_complete]* → response → [DONE]</text>
+
+  <!-- ==================== 图例 ==================== -->
+  <g class="legend" transform="translate(650, 80)">
+    <text x="0" y="0" font-size="11" fill="#fff" font-weight="600">Legend</text>
+    <rect x="0" y="10" width="14" height="10" fill="url(#g-blue)" stroke="#1e88e5"/>
+    <text x="20" y="19">前端模块</text>
+    <rect x="0" y="28" width="14" height="10" fill="url(#g-teal)" stroke="#2e7d32"/>
+    <text x="20" y="37">Web路由层</text>
+    <rect x="0" y="46" width="14" height="10" fill="url(#g-orange)" stroke="#ef6c00"/>
+    <text x="20" y="55">核心引擎</text>
+    <rect x="0" y="64" width="14" height="10" fill="url(#g-purple)" stroke="#8e24aa"/>
+    <text x="20" y="73">外部服务</text>
+    <rect x="0" y="82" width="14" height="10" fill="url(#g-red)" stroke="#e53935"/>
+    <text x="20" y="91">数据存储</text>
+    <line x1="110" y1="14" x2="140" y2="14" stroke="#4fc3f7" stroke-width="2" marker-end="url(#ah-blue)"/>
+    <text x="148" y="18">前端请求</text>
+    <line x1="110" y1="32" x2="140" y2="32" stroke="#66bb6a" stroke-width="2" marker-end="url(#ah-green)"/>
+    <text x="148" y="36">HTTP/SSE</text>
+    <line x1="110" y1="50" x2="140" y2="50" stroke="#ffa726" stroke-width="2" marker-end="url(#ah-orange)"/>
+    <text x="148" y="54">内部调用</text>
+    <line x1="110" y1="68" x2="140" y2="68" stroke="#ab47bc" stroke-width="2" marker-end="url(#ah-purple)"/>
+    <text x="148" y="72">外部API</text>
+    <line x1="110" y1="86" x2="140" y2="86" stroke="#ef5350" stroke-width="2" marker-end="url(#ah-red)"/>
+    <text x="148" y="90">数据读写</text>
+  </g>
+
+</svg>
+</body>
+</html>

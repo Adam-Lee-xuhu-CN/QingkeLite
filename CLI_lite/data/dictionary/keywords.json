@@ -1,0 +1,10 @@
+{
+  "categories": {
+    "file_operations": ["创建", "删除", "读取", "写入", "复制", "移动", "重命名", "文件", "目录", "文件夹"],
+    "project_setup": ["项目", "初始化", "安装", "配置", "依赖", "环境", "setup", "install"],
+    "code_generation": ["代码", "生成", "函数", "类", "脚本", "程序", "实现"],
+    "testing": ["测试", "unittest", "pytest", "单元测试", "集成测试"],
+    "build_deploy": ["构建", "编译", "部署", "发布", "build", "deploy"],
+    "documentation": ["文档", "说明", "README", "注释", "doc"]
+  }
+}
